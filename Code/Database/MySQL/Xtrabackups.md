@@ -1,13 +1,9 @@
 ## 1. 全量备份
 
 ```shell
-
 $ innobackupex --defaults-file=/etc/my.cnf 
-
 --slave-info --user=root --password="123456" 
-
 --backup /data/backups/
-
 ```
 
 ## 2. 增量备份
