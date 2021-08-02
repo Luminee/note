@@ -237,3 +237,214 @@ errors.Is(result.Error, gorm.ErrRecordNotFound)
 
 > **db.Table("users").First(&res)** 不可用
 
+检索主键最好是数值类型，如果是字符串，小心SQL注入风险
+
+多条检索和 `Where` 查询 :
+
+```go
+result := db.Find(&users)
+// SELECT * FROM users;
+
+result.RowsAffected // returns found records count
+result.Error        // returns error
+
+db.Where("name = ?", "aa").First(&user)
+.Where("name IN ?", []string{"aa", "bb"})
+
+// Sturct 和 Map 查询
+db.Where(&User{Name: "aa", Age: 20}).First(&user)
+.Where(map[string]interface{}{"name": "aa", "age": 20})
+.Where([]int64{20, 21, 22}) // id IN (20, 21, 22)
+
+// 零值将被忽略 (可用 map 规避)
+.Where(&User{Name: "aa", Age: 0}) // Where name = "aa"
+
+// Find, First 可以内连查询
+db.Find(&user, "name = ?", "aa") // Where name = "aa"
+```
+
+**Where Not**  用 `Not()` 表示 ; **Where Or** 用 `Or()` 表示
+
+**Select** 用 `Select()` 表示 ; **Order By** 用 `Order()` 表示
+
+```go
+db.Not("name = ?", "aa").First(&user)
+db.Where().Or("role = ?", "admin").Find(&users)
+
+// Select name, age From users;
+db.Select("name", "age").Find(&users) 
+db.Select([]string{"name", "age"}).Find(&users)
+// SELECT COALESCE(age,'42') FROM users;
+db.Table("users").Select("COALESCE(age,?)", 42).Rows()
+
+// Order By age desc, name
+db.Order("age desc, name").Find(&users)
+db.Order("age desc").Order("name").Find(&users)
+
+db.Limit(10).Offset(5).Find(&users) // Offset 5 Limit 10
+// 使用 -1 取消 limit (offset 同理)
+db.Limit(10).Find(&users1).Limit(-1).Find(&users2)
+// SELECT * FROM users LIMIT 10; (users1)
+// SELECT * FROM users; (users2)
+
+// Group By & Having & Distinct
+db.Model(&User{}).Group("age").Having("age > ?", 10).Find()
+db.Distinct("name", "age")
+
+// Count
+db.Model(&User{}).Group("age").Count(&count)
+```
+
+**Join**
+
+```go
+db.Model().Joins("left join bb on bb.user_id = users.id")
+```
+
+**Scan** 将结果放入 stuct 中
+
+```go
+type Result struct {
+    Name string
+    Age  int
+}
+
+var res Result
+db.Table("").Select("name", "age").Where().Scan(&res)
+db.Raw("Select name, age From ...").Scan(&res)
+```
+
+_高级搜索_ 
+
+```go
+// Lock For Update
+db.Clauses(clause.Locking{Strength: "UPDATE"}).Find(&users)
+// Select * From users For Update
+
+// SubQuery
+db.Where("age > (?)", db.Table().Select()).Find()
+// From SubQuery
+db.Table("(?) as u", db.Model().Where()).Find()
+
+// Where Group
+db.Where(db.Where().Or())
+
+// sql.Named
+db.Where("a = @aa OR b = @aa", sql.Named("aa", "bb"))
+
+// 结果扫描到 map 中
+var result map[string]interface{}
+db.Model().First(&result)
+```
+
+**FirstOrInit**
+
+```go
+// 查询不到则初始化实例 (无数据库参与)
+db.Where(User{Name: "aa"}).FirstOrInit(&user)
+// 按 name 查询，若查询不到，则按 name, age 初始化
+db.Where(User{Name: "aa"}).Attrs("age", 20).FirstOrInit(&user)
+```
+
+**FirstOrCreate**
+
+```go
+// 查不到则插入记录
+db.Where(User{Name: "aa"}).FirstOrCreate(&user)
+// Attrs(), Assign 同上
+```
+
+**Optimizer/Index Hints** _优化器提示_
+
+```go
+import "gorm.io/hints"
+
+db.Clauses(hints.New("MAX_EXECUTION_TIME(10000)")).Find(&User{})
+// SELECT * /*+ MAX_EXECUTION_TIME(10000) */ FROM `users`
+
+db.Clauses(hints.UseIndex("idx_user_name")).Find(&User{})
+// SELECT * FROM `users` USE INDEX (`idx_user_name`)
+db.Clauses(hints.ForceIndex("idx_user_name", "idx_user_id").ForJoin()).Find(&User{})
+// SELECT * FROM `users` FORCE INDEX FOR JOIN (`idx_user_name`,`idx_user_id`)"
+```
+
+**FindInBatches** _chunk_
+
+```go
+result := db.Where().FindInBatches(&results, 100 func(tx *gorm.DB batch int) error {{
+    for _, result := range results {
+        // processing
+    }
+    
+    tx.Save(&results)
+    tx.RowsAffected
+    
+    batch // Batch 1, 2, 3
+    return nil  // return error will stop all
+}})
+
+result.Error // returned error
+result.RowsAffected // processed records count in all batches
+```
+
+钩子 **Hooks** : `AfterFind `
+
+**Pluck** 获取单列
+
+```go
+var ages []int64
+db.Model(&User{}).Pluck("age", &ages)
+db.Model(&User{}).Distinct().Pluck("name", &names)
+db.Select("name", "age").Scan(&users) // Scan or Find 获取多列
+```
+
+**Scopes** 作用域  预定义常用查询
+
+```go
+func AgeGT18(db *gorm.DB) *gorm.DB {
+    return db.Where("age > ?", 18)
+}
+
+func Status(status string) func (db *gorm.DB) *gorm.DB {
+    return func (db *gorm.DB) *gorm.DB {
+        return db.Where("status = ?", status)
+    }
+}
+
+db.Scopes(AgeGT18, Status("in")).Find(&users)
+// Find All in and age > 18 
+```
+
+#### SQL Builder & Raw
+
+**Raw SQL** with `Scan`, `Exec`
+
+```go
+db.Raw("SELECT id, name FROM users WHERE name = ?", 3).Scan(&users)
+
+db.Exec("DROP TABLE users")
+```
+
+`*sql.Row`, `*sql.Rows`
+
+```go
+row := db.Table().Where().Select("name", "age").Row()
+row.Scan(&name, &age)
+
+rows, err := db.Model().Where().Select("name, age").Rows()
+defer rows.Close()
+var user User
+for rows.Next() {
+    rows.Scan(&name, &age)
+    // do something
+    //or Scan a row into user
+    db.ScanRows(rows, &user)
+}
+```
+
+
+
+
+
+
+
