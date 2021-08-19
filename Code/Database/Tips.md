@@ -44,3 +44,9 @@
 
 14. 与 SQL 标准不同的地方在于InnoDB 存储引擎在 **REPEATABLE-READ(可重读)** 事务隔离级别下使用的是Next-Key Lock 锁算法，因此可以避免幻读的产生，这与其他数据库系统(如 SQL Server)是不同的
 
+> 1. Adjacency List 邻接表
+> 2. Path Enumerations 路径枚举 (维护 更新上层路径)
+> 3. Nested Sets 嵌套集合 (左右节点，维护困难)
+> 4. Closure Table 闭合表 (需要大表维护各节点关系)
+> 5. 前序遍历
+
