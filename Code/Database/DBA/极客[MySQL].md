@@ -62,7 +62,7 @@
 
 1. change buffer
 
-a). Using change buffer: unique (x) index (v)
+   a). Using change buffer: unique (x) index (v)
 
 ## 10. MySQL choose index
 

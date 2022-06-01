@@ -59,63 +59,34 @@ mysql> set password for 'root'@'localhost'=password('123456');
 ### 6). Mysql 权限
 
 |No.|名称|解释|备注|
-
 |----|----|----|----|
-
 |1|usage|连接(登陆)权限|默认授予, 只能登陆,不可收回|
-
 |2|select|使用 `select` 权限 |`select * from table;`|
-
 |3|create|create table 权限| |
-
 |4|create routine |使用create,alter,drop & procedure,function|自动授予EXECUTE, ALTER ROUTINE权限给它的创建者|
-
 |5|create temporary tables|使用create temporary tables| |
-
 |6|create view|使用create view| |
-
 |7|create user|使用CREATE USER|须拥有全局CREATE USER或INSERT权限|
-
 |8|insert|使用insert into||
-
 |9|alter|使用alter||
-
 |10|alter routine|使用alter,drop & procedure,function||
-
 |11|update|使用update table||
-
 |12|delete|使用delete from||
-
 |13|drop|使用drop table; database||
-
 |14|show databases|使用show database权限下的数据库|除非有全局权限|
-
 |15|show view|使用 show view||
-
 |16|index|执行 craete, drop index||
-
 |17|excute|执行存在的 Functions, Procedures||
-
 |18|lock tables|使用 lock tables||
-
 |19|references|可建立外键约束||
-
 |20|reload|执行 flush table,logs,privileges||
-
 |21|replication client|可查询master server, slave server状态||
-
 |22|replication slave|查看从服务器|从主服务器读取日志||
-
 |23|shutdown|关闭Mysql||
-
 |24|grant option|将拥有的权限授予其他用户|仅限自己拥有|
-
 |25|file|可执行select .. into outfile|管理员除外|
-
 |26|super|允许终止查询,修改全局变量 set 语句|使用change master, purge master logs|
-
 |27|process|执行 show processlist 和 Kill | 默认用户可查看本用户进程|
-
 
 
 ## 二. ini配置
